@@ -27,7 +27,7 @@ The system is built on a recursive agent-based architecture where specialized co
 3. **Provider Manager** - Manages connections to external data sources
 4. **Performance Monitor** - Tracks and analyzes trading performance
 
-![System Architecture](docs/assets/perseus-drive-architecture.png)
+![System Architecture](docs/assets/system-architecture-diagram-1.png)
 
 ## Recursive Prompt Reinjection System
 
