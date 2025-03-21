@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/perseus-logo.png" alt="Perseus Drive Logo" width="400">
+</p>
+
 # Perseus Drive
 
 ## Overview
