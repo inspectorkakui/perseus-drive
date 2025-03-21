@@ -21,6 +21,7 @@ logs/
 .idea/
 *.swp
 *.swo
+.cursor/
 
 # Operating System
 .DS_Store
