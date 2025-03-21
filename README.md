@@ -1,20 +1,9 @@
 # Perseus Drive
 
 <div align="center">
-  <!-- 
-  Replace this comment with the Perseus Drive logo image:
-  1. Create a directory: docs/assets/
-  2. Save the Greek statue with circuit board pattern image as "perseus-logo.png" in that directory
-  3. The image will then display here automatically
-  -->
-  <h3>Perseus Drive</h3>
-  <p>AI-driven investment analysis and decision-making system</p>
+  <img src="docs/assets/perseus-logo.png" alt="Perseus Drive" width="800">
+  <h3>AI-driven investment analysis and decision-making system</h3>
 </div>
-
-<!-- 
-Artwork to be added here
-The artwork should represent an AI-driven trading system with a sleek, modern design
--->
 
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)](package.json)
