@@ -27,14 +27,19 @@
   "license": "UNLICENSED",
   "dependencies": {
     "axios": "^0.27.2",
+    "chai": "^5.2.0",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "fast-json-patch": "^3.1.1",
     "joi": "^17.13.3",
     "json-diff": "^1.0.6",
+    "mocha": "^11.1.0",
     "moment": "^2.29.4",
+    "nock": "^14.0.1",
+    "sinon": "^19.0.4",
     "uuid": "^9.0.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "jest": "^29.5.0",
