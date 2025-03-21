@@ -65,23 +65,25 @@ class StrategyAgent extends BaseAgent {
         if (lastPrice > prevPrice * 1.02) {
           return {
             action: 'BUY',
-            reason: 'Upward trend detected',
             confidence: 0.6,
+            symbol: data.symbol || 'unknown',
             params: {
               entryPrice: lastPrice,
               stopLoss: prevPrice,
-              takeProfit: lastPrice * 1.05
+              takeProfit: lastPrice * 1.05,
+              positionSize: 0.1 // 10% of available capital
             }
           };
         } else if (lastPrice < prevPrice * 0.98) {
           return {
             action: 'SELL',
-            reason: 'Downward trend detected',
             confidence: 0.6,
+            symbol: data.symbol || 'unknown',
             params: {
               entryPrice: lastPrice,
               stopLoss: prevPrice,
-              takeProfit: lastPrice * 0.95
+              takeProfit: lastPrice * 0.95,
+              positionSize: 0.1 // 10% of available capital
             }
           };
         }
@@ -96,23 +98,25 @@ class StrategyAgent extends BaseAgent {
         if (lastPrice > mean * 1.05) {
           return {
             action: 'SELL',
-            reason: 'Price significantly above mean',
             confidence: 0.7,
+            symbol: data.symbol || 'unknown',
             params: {
               entryPrice: lastPrice,
               stopLoss: lastPrice * 1.03,
-              takeProfit: mean
+              takeProfit: mean,
+              positionSize: 0.1 // 10% of available capital
             }
           };
         } else if (lastPrice < mean * 0.95) {
           return {
             action: 'BUY',
-            reason: 'Price significantly below mean',
             confidence: 0.7,
+            symbol: data.symbol || 'unknown',
             params: {
               entryPrice: lastPrice,
               stopLoss: lastPrice * 0.97,
-              takeProfit: mean
+              takeProfit: mean,
+              positionSize: 0.1 // 10% of available capital
             }
           };
         }
@@ -121,17 +125,175 @@ class StrategyAgent extends BaseAgent {
       
       this.registerStrategy('breakout', 'Breakout', function(data) {
         // Simple breakout strategy
-        return null; // Placeholder
+        const prices = data.prices;
+        if (!prices || prices.length < 20) return null;
+        
+        const lastPrice = prices[prices.length - 1];
+        
+        // Find recent high and low for channel
+        const lookbackPeriod = Math.min(20, prices.length);
+        let recentHigh = -Infinity;
+        let recentLow = Infinity;
+        
+        for (let i = prices.length - lookbackPeriod; i < prices.length - 1; i++) {
+          if (prices[i] > recentHigh) recentHigh = prices[i];
+          if (prices[i] < recentLow) recentLow = prices[i];
+        }
+        
+        // Check for breakout
+        if (lastPrice > recentHigh * 1.02) {
+          return {
+            action: 'BUY',
+            confidence: 0.65,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: recentHigh * 0.98,
+              takeProfit: lastPrice + (recentHigh - recentLow), // Project the channel height
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        } else if (lastPrice < recentLow * 0.98) {
+          return {
+            action: 'SELL',
+            confidence: 0.65,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: recentLow * 1.02,
+              takeProfit: lastPrice - (recentHigh - recentLow), // Project the channel height
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        }
+        
+        return null;
       });
       
       this.registerStrategy('momentum', 'Momentum', function(data) {
         // Simple momentum strategy
-        return null; // Placeholder
+        const prices = data.prices;
+        const volumes = data.volumes;
+        
+        if (!prices || prices.length < 10) return null;
+        
+        const lastPrice = prices[prices.length - 1];
+        const lookbackPeriod = Math.min(10, prices.length - 1);
+        
+        // Calculate Rate of Change (ROC) - basic momentum indicator
+        const priceNPeriodsAgo = prices[prices.length - 1 - lookbackPeriod];
+        const roc = ((lastPrice - priceNPeriodsAgo) / priceNPeriodsAgo) * 100;
+        
+        // Calculate volume momentum (if volumes data is available)
+        let volumeMomentum = 0;
+        if (volumes && volumes.length >= lookbackPeriod) {
+          const recentVolumes = volumes.slice(-lookbackPeriod);
+          const avgVolume = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
+          const lastVolume = volumes[volumes.length - 1];
+          volumeMomentum = lastVolume / avgVolume;
+        }
+        
+        // Combined momentum signal (price momentum + volume confirmation)
+        if (roc > 5 && volumeMomentum > 1.2) {
+          // Strong bullish momentum with volume confirmation
+          return {
+            action: 'BUY',
+            confidence: 0.75,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 0.95, // 5% stop loss
+              takeProfit: lastPrice * 1.10, // 10% profit target
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        } else if (roc < -5 && volumeMomentum > 1.2) {
+          // Strong bearish momentum with volume confirmation
+          return {
+            action: 'SELL',
+            confidence: 0.75,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 1.05, // 5% stop loss
+              takeProfit: lastPrice * 0.90, // 10% profit target
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        }
+        
+        return null;
       });
       
       this.registerStrategy('volume-profile', 'Volume Profile', function(data) {
-        // Simple volume profile strategy
-        return null; // Placeholder
+        // Volume profile strategy implementation
+        const prices = data.prices;
+        const volumes = data.volumes;
+        
+        if (!prices || !volumes || prices.length < 20 || volumes.length < 20) return null;
+        
+        const lastPrice = prices[prices.length - 1];
+        const lookbackPeriod = Math.min(20, prices.length);
+        
+        // Create a simple volume profile
+        const volumeProfile = new Map();
+        const pricePrecision = 2; // Round prices to 2 decimal places for grouping
+        
+        // Build the volume profile
+        for (let i = prices.length - lookbackPeriod; i < prices.length; i++) {
+          const roundedPrice = Math.round(prices[i] * Math.pow(10, pricePrecision)) / Math.pow(10, pricePrecision);
+          const volume = volumes[i] || 0;
+          
+          if (volumeProfile.has(roundedPrice)) {
+            volumeProfile.set(roundedPrice, volumeProfile.get(roundedPrice) + volume);
+          } else {
+            volumeProfile.set(roundedPrice, volume);
+          }
+        }
+        
+        // Find the high volume node (price with highest volume)
+        let highVolumeNode = lastPrice;
+        let maxVolume = 0;
+        
+        for (const [price, volume] of volumeProfile.entries()) {
+          if (volume > maxVolume) {
+            maxVolume = volume;
+            highVolumeNode = price;
+          }
+        }
+        
+        // Check if current price is significantly above or below high volume node
+        const percentDiff = ((lastPrice - highVolumeNode) / highVolumeNode) * 100;
+        
+        if (percentDiff > 4) {
+          // Price is significantly above high volume node - potential short opportunity
+          return {
+            action: 'SELL',
+            confidence: 0.7,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 1.03, // 3% stop loss
+              takeProfit: highVolumeNode, // Target the high volume node
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        } else if (percentDiff < -4) {
+          // Price is significantly below high volume node - potential long opportunity
+          return {
+            action: 'BUY',
+            confidence: 0.7,
+            symbol: data.symbol || 'unknown',
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 0.97, // 3% stop loss
+              takeProfit: highVolumeNode, // Target the high volume node
+              positionSize: 0.1 // 10% of available capital
+            }
+          };
+        }
+        
+        return null;
       });
       
       // Initialize performance tracking from knowledge base or create new
@@ -227,168 +389,521 @@ class StrategyAgent extends BaseAgent {
   }
   
   /**
-   * Process market data and generate trading signals
-   * @param {Object} marketData - Processed market data
-   * @returns {Array} - Generated trading signals
+   * Process market data to generate trade signals
+   * @param {Object} marketData - Market data to process
+   * @returns {Array} Array of trade signals
    */
   async process(marketData) {
+    this.logger.info('Processing market data for trading signals');
+    
+    const timestamp = marketData.timestamp || Date.now();
+    const signals = [];
+    
+    // Check if we have registered strategies
+    if (!this.strategies || Object.keys(this.strategies).length === 0) {
+      this.logger.warn('No strategies registered, using built-in strategies');
+      this._registerDefaultStrategies();
+    }
+    
+    // Process with each strategy
+    for (const [strategyId, strategy] of Object.entries(this.strategies)) {
+      try {
+        // Process market data with strategy
+        const result = await this._processWithStrategy(strategy, marketData);
+        
+        if (result && result.signal) {
+          // Add strategyId to the signal
+          result.signal.strategyId = strategyId;
+          
+          this.logger.info(`Generated signal from strategy ${strategyId}: ${result.signal.action}`);
+          signals.push(result.signal);
+          
+          // Store individual signal in knowledge base with strategy ID
+          await this.storeKnowledge(
+            'signals',
+            `${strategyId}-${timestamp}`,
+            result.signal
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Error processing with strategy ${strategyId}:`, error);
+      }
+    }
+    
+    // Store all signals in knowledge base
+    if (signals.length > 0) {
+      await this.storeKnowledge('signals', `signals-${timestamp}`, signals);
+    }
+    
+    return signals;
+  }
+  
+  /**
+   * Process market data with a specific strategy
+   * @private
+   * @param {Object} strategy - Strategy to use
+   * @param {Object} marketData - Market data to process
+   * @returns {Object} Strategy result with signal
+   */
+  async _processWithStrategy(strategy, marketData) {
     try {
-      this.logger.info('Processing market data for trading signals');
-      this.logger.debug(`Market data: ${JSON.stringify(marketData)}`);
+      if (!strategy.type) {
+        throw new Error('Strategy missing type');
+      }
       
-      // Implement signal generation logic
-      const signals = [];
+      // Technical Analysis based strategies
+      if (strategy.type === 'technical') {
+        return this._processTechnicalStrategy(strategy, marketData);
+      }
       
-      // Run each strategy against the market data
-      for (const [id, strategy] of this.strategies.entries()) {
-        try {
-          // Ensure the strategy function exists and is callable
-          if (typeof strategy.function !== 'function') {
-            this.logger.warn(`Strategy ${id} has no valid function`);
-            continue;
-          }
-          
-          // Call the strategy function with market data
-          const signal = strategy.function(marketData);
-          
-          if (signal) {
-            // Add strategy info to signal
-            signal.strategyId = id;
-            signal.strategyName = strategy.name;
-            signal.generatedAt = new Date().toISOString();
-            signal.marketData = {
-              symbol: marketData.symbol,
-              timestamp: marketData.timestamp
-            };
-            
-            signals.push(signal);
-          } else {
-            // If we have uptrend data, we should generate a buy signal
-            if (marketData.prices && marketData.prices.length >= 2) {
-              const lastPrice = marketData.prices[marketData.prices.length - 1];
-              const firstPrice = marketData.prices[0];
-              
-              // If we see a clear uptrend (more than 5% increase)
-              if (lastPrice > firstPrice * 1.05) {
-                const upTrendSignal = {
-                  action: 'BUY',
-                  reason: 'Uptrend detected across price series',
-                  confidence: 0.7,
-                  params: {
-                    entryPrice: lastPrice,
-                    stopLoss: firstPrice * 0.95,
-                    takeProfit: lastPrice * 1.1
-                  },
-                  strategyId: id,
-                  strategyName: strategy.name,
-                  generatedAt: new Date().toISOString(),
-                  marketData: {
-                    symbol: marketData.symbol,
-                    timestamp: marketData.timestamp
-                  }
-                };
-                signals.push(upTrendSignal);
-                this.logger.info(`Generated uptrend signal for ${marketData.symbol}`);
-              }
-              // If we see a clear downtrend (more than 5% decrease)
-              else if (lastPrice < firstPrice * 0.95) {
-                const downTrendSignal = {
-                  action: 'SELL',
-                  reason: 'Downtrend detected across price series',
-                  confidence: 0.7,
-                  params: {
-                    entryPrice: lastPrice,
-                    stopLoss: firstPrice * 1.05,
-                    takeProfit: lastPrice * 0.9
-                  },
-                  strategyId: id,
-                  strategyName: strategy.name,
-                  generatedAt: new Date().toISOString(),
-                  marketData: {
-                    symbol: marketData.symbol,
-                    timestamp: marketData.timestamp
-                  }
-                };
-                signals.push(downTrendSignal);
-                this.logger.info(`Generated downtrend signal for ${marketData.symbol}`);
-              }
-            }
-          }
-        } catch (strategyError) {
-          this.logger.error(`Error executing strategy ${id}:`, strategyError);
+      // Prompt-based strategies
+      if (strategy.type === 'prompt-based') {
+        return this._processPromptBasedStrategy(strategy, marketData);
+      }
+      
+      // Machine learning strategies
+      if (strategy.type === 'ml') {
+        return this._processMLStrategy(strategy, marketData);
+      }
+      
+      throw new Error(`Unknown strategy type: ${strategy.type}`);
+    } catch (error) {
+      this.logger.error(`Error in _processWithStrategy:`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Process market data with a technical analysis strategy
+   * @private
+   * @param {Object} strategy - Strategy configuration
+   * @param {Object} marketData - Market data to process
+   * @returns {Object} Strategy result with signal
+   */
+  _processTechnicalStrategy(strategy, marketData) {
+    if (!marketData.prices || !marketData.prices.length) {
+      throw new Error('Market data missing prices');
+    }
+    
+    let signal = null;
+    const strategyId = strategy.id || 'unknown';
+    
+    // Different strategies based on strategy ID
+    switch (strategyId) {
+      case 'trend-following':
+        signal = this._trendFollowingStrategy(marketData);
+        break;
+      case 'mean-reversion':
+        signal = this._meanReversionStrategy(marketData);
+        break;
+      case 'breakout':
+        signal = this._breakoutStrategy(marketData);
+        break;
+      case 'momentum':
+        signal = this._momentumStrategy(marketData);
+        break;
+      case 'volume-profile':
+        signal = this._volumeProfileStrategy(marketData);
+        break;
+      default:
+        // Default strategy
+        signal = this._trendFollowingStrategy(marketData);
+    }
+    
+    if (signal) {
+      // Make sure to include the strategyId in the signal
+      signal.strategyId = strategyId;
+    }
+    
+    return { signal };
+  }
+  
+  /**
+   * Trend following strategy
+   * @private
+   * @param {Object} marketData - Market data
+   * @returns {Object} Signal
+   */
+  _trendFollowingStrategy(marketData) {
+    const prices = marketData.prices;
+    const lastPrice = prices[prices.length - 1];
+    const symbol = marketData.symbol;
+    
+    // Simple moving average calculation
+    const shortPeriod = 5;
+    const longPeriod = 10;
+    
+    // Calculate short-term SMA
+    let shortSMA = 0;
+    for (let i = prices.length - shortPeriod; i < prices.length; i++) {
+      shortSMA += prices[i];
+    }
+    shortSMA /= shortPeriod;
+    
+    // Calculate long-term SMA
+    let longSMA = 0;
+    for (let i = prices.length - longPeriod; i < prices.length; i++) {
+      if (i >= 0) {
+        longSMA += prices[i];
+      }
+    }
+    longSMA /= longPeriod;
+    
+    // Generate signal based on moving average crossover
+    if (shortSMA > longSMA) {
+      return {
+        action: 'BUY',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1, // 10% of available capital
+          stopLoss: lastPrice * 0.95, // 5% stop loss
+          takeProfit: lastPrice * 1.1 // 10% take profit
+        }
+      };
+    } else if (shortSMA < longSMA) {
+      return {
+        action: 'SELL',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1, // 10% of available capital
+          stopLoss: lastPrice * 1.05, // 5% stop loss
+          takeProfit: lastPrice * 0.9 // 10% take profit
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Mean reversion strategy
+   * @private
+   * @param {Object} marketData - Market data
+   * @returns {Object} Signal
+   */
+  _meanReversionStrategy(marketData) {
+    const prices = marketData.prices;
+    const lastPrice = prices[prices.length - 1];
+    const symbol = marketData.symbol;
+    
+    // Calculate mean and standard deviation
+    let sum = 0;
+    for (const price of prices) {
+      sum += price;
+    }
+    const mean = sum / prices.length;
+    
+    let sumSquaredDiff = 0;
+    for (const price of prices) {
+      sumSquaredDiff += Math.pow(price - mean, 2);
+    }
+    const stdDev = Math.sqrt(sumSquaredDiff / prices.length);
+    
+    // Calculate z-score (how many standard deviations from mean)
+    const zScore = (lastPrice - mean) / stdDev;
+    
+    // Generate signal based on z-score
+    if (zScore < -1.5) {
+      // Price is significantly below mean, expect reversion upward
+      return {
+        action: 'BUY',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 0.95,
+          takeProfit: lastPrice * 1.1
+        }
+      };
+    } else if (zScore > 1.5) {
+      // Price is significantly above mean, expect reversion downward
+      return {
+        action: 'SELL',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 1.05,
+          takeProfit: lastPrice * 0.9
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Breakout strategy
+   * @private
+   * @param {Object} marketData - Market data
+   * @returns {Object} Signal
+   */
+  _breakoutStrategy(marketData) {
+    const prices = marketData.prices;
+    const lastPrice = prices[prices.length - 1];
+    const symbol = marketData.symbol;
+    
+    // Find highest high and lowest low
+    let highestHigh = -Infinity;
+    let lowestLow = Infinity;
+    
+    // Look back over the last N periods
+    const lookbackPeriod = Math.min(20, prices.length - 1);
+    
+    for (let i = prices.length - lookbackPeriod - 1; i < prices.length - 1; i++) {
+      if (i >= 0) {
+        if (prices[i] > highestHigh) {
+          highestHigh = prices[i];
+        }
+        if (prices[i] < lowestLow) {
+          lowestLow = prices[i];
         }
       }
-      
-      this.logger.info(`Generated ${signals.length} trading signals`);
-      
-      // Update performance tracking for these signals
-      if (signals.length > 0) {
-        // For each signal, generate a mock trade outcome to track performance
-        signals.forEach(signal => {
-          const mockTrade = {
-            action: signal.action,
-            entryPrice: signal.params.entryPrice,
-            exitPrice: signal.action === 'BUY' ? 
-              signal.params.entryPrice * 1.05 : // 5% profit for BUY
-              signal.params.entryPrice * 0.95,  // 5% profit for SELL
-            timestamp: new Date().toISOString(),
-            symbol: signal.marketData.symbol
-          };
-          
-          const success = true; // Assume success for simplistic tracking
-          const returnPct = signal.action === 'BUY' ? 5.0 : 5.0; // 5% return
-          
-          this.recordTradeOutcome(signal.strategyId, mockTrade, success, returnPct);
-        });
+    }
+    
+    // Generate signal based on breakout beyond previous high/low
+    if (lastPrice > highestHigh * 1.02) {
+      // Breakout above resistance
+      return {
+        action: 'BUY',
+        symbol,
+        confidence: 0.8,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lowestLow,
+          takeProfit: lastPrice * 1.1
+        }
+      };
+    } else if (lastPrice < lowestLow * 0.98) {
+      // Breakout below support
+      return {
+        action: 'SELL',
+        symbol,
+        confidence: 0.8,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: highestHigh,
+          takeProfit: lastPrice * 0.9
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Momentum strategy
+   * @private
+   * @param {Object} marketData - Market data
+   * @returns {Object} Signal
+   */
+  _momentumStrategy(marketData) {
+    const prices = marketData.prices;
+    const lastPrice = prices[prices.length - 1];
+    const symbol = marketData.symbol;
+    
+    // Calculate returns
+    const returns = [];
+    for (let i = 1; i < prices.length; i++) {
+      returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+    }
+    
+    // Calculate average return
+    const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+    
+    // Generate signal based on momentum
+    if (avgReturn > 0.01) { // Strong positive momentum
+      return {
+        action: 'BUY',
+        symbol,
+        confidence: 0.75,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 0.95,
+          takeProfit: lastPrice * 1.1
+        }
+      };
+    } else if (avgReturn < -0.01) { // Strong negative momentum
+      return {
+        action: 'SELL',
+        symbol,
+        confidence: 0.75,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 1.05,
+          takeProfit: lastPrice * 0.9
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Volume profile strategy
+   * @private
+   * @param {Object} marketData - Market data
+   * @returns {Object} Signal
+   */
+  _volumeProfileStrategy(marketData) {
+    const prices = marketData.prices;
+    const volumes = marketData.volumes;
+    const lastPrice = prices[prices.length - 1];
+    const symbol = marketData.symbol;
+    
+    // Check if we have volume data
+    if (!volumes || volumes.length !== prices.length) {
+      return null;
+    }
+    
+    // Find price levels with highest volume
+    const volByPrice = {};
+    for (let i = 0; i < prices.length; i++) {
+      const priceLevel = Math.round(prices[i] / 100) * 100; // Round to nearest 100
+      volByPrice[priceLevel] = (volByPrice[priceLevel] || 0) + volumes[i];
+    }
+    
+    // Find the price level with highest volume
+    let highestVolPriceLevel = 0;
+    let highestVol = 0;
+    
+    for (const [priceLevel, volume] of Object.entries(volByPrice)) {
+      if (volume > highestVol) {
+        highestVol = volume;
+        highestVolPriceLevel = Number(priceLevel);
       }
-      
-      // Store signals in knowledge base with current timestamp
-      if (signals.length > 0) {
-        const signalId = `signals-${Date.now()}`;
-        await this.storeKnowledge(`signals.${signalId}`, signals);
-      } else {
-        // Store an empty array to track that no signals were generated
-        const signalId = `signals-${Date.now()}`;
-        await this.storeKnowledge(`signals.${signalId}`, []);
+    }
+    
+    // Generate signal based on price distance from high volume node
+    const distanceFromNode = (lastPrice - highestVolPriceLevel) / highestVolPriceLevel;
+    
+    if (distanceFromNode > 0.05) {
+      // Price is above high volume node, might pull back
+      return {
+        action: 'SELL',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 1.05,
+          takeProfit: highestVolPriceLevel
+        }
+      };
+    } else if (distanceFromNode < -0.05) {
+      // Price is below high volume node, might bounce up
+      return {
+        action: 'BUY',
+        symbol,
+        confidence: 0.7,
+        params: {
+          entryPrice: lastPrice,
+          positionSize: 0.1,
+          stopLoss: lastPrice * 0.95,
+          takeProfit: highestVolPriceLevel
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Register default strategies
+   * @private
+   */
+  _registerDefaultStrategies() {
+    this.strategies = {
+      'trend-following': {
+        id: 'trend-following',
+        name: 'Trend Following',
+        type: 'technical',
+        description: 'Follows market trends using moving averages'
+      },
+      'mean-reversion': {
+        id: 'mean-reversion',
+        name: 'Mean Reversion',
+        type: 'technical',
+        description: 'Trades mean reversion based on statistical deviations'
+      },
+      'breakout': {
+        id: 'breakout',
+        name: 'Breakout',
+        type: 'technical',
+        description: 'Identifies breakouts from support/resistance levels'
+      },
+      'momentum': {
+        id: 'momentum',
+        name: 'Momentum',
+        type: 'technical',
+        description: 'Trades based on price momentum and acceleration'
+      },
+      'volume-profile': {
+        id: 'volume-profile',
+        name: 'Volume Profile',
+        type: 'technical',
+        description: 'Uses volume profile to identify significant price levels'
       }
-      
-      return signals;
-    } catch (error) {
-      this.logger.error('Error processing market data:', error);
-      return []; // Return empty array on error
+    };
+    
+    // Log registered strategies
+    for (const [id, strategy] of Object.entries(this.strategies)) {
+      this.logger.info(`Registered strategy: ${strategy.name} (${id})`);
     }
   }
   
   /**
-   * Check if a strategy is applicable for the current market data
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {boolean} Whether the strategy is applicable
+   * Process with prompt-based strategy
+   * @private
+   * @param {Object} strategy - Strategy configuration
+   * @param {Object} marketData - Market data
+   * @returns {Object} Strategy result with signal
    */
-  isStrategyApplicable(strategy, data) {
-    // Check if the strategy supports this market
-    if (strategy.markets && !strategy.markets.includes(this.getMarketType(data.original.symbol))) {
+  async _processPromptBasedStrategy(strategy, marketData) {
+    // Placeholder for prompt-based strategy implementation
+    return { signal: null };
+  }
+  
+  /**
+   * Process with machine learning strategy
+   * @private
+   * @param {Object} strategy - Strategy configuration
+   * @param {Object} marketData - Market data
+   * @returns {Object} Strategy result with signal
+   */
+  async _processMLStrategy(strategy, marketData) {
+    // Placeholder for machine learning strategy implementation
+    return { signal: null };
+  }
+  
+  /**
+   * Stores knowledge in the knowledge base
+   * @param {string} category - The category of knowledge
+   * @param {string} key - The key for the knowledge
+   * @param {any} data - The data to store
+   * @param {Object} metadata - Optional metadata
+   * @returns {Promise<boolean>} - Whether the operation was successful
+   */
+  async storeKnowledge(category, key, data, metadata = {}) {
+    try {
+      if (this.knowledgeBase) {
+        await this.knowledgeBase.storeKnowledge(category, key, data, metadata);
+        return true;
+      }
       return false;
-    }
-    
-    // For now, we don't have timeframe info in the data
-    // In a real implementation, this would check timeframe compatibility
-    
-    return true;
-  }
-  
-  /**
-   * Get market type from symbol
-   * @param {string} symbol - Market symbol
-   * @returns {string} Market type
-   */
-  getMarketType(symbol) {
-    if (symbol.includes('-USD') || symbol.includes('/USD')) {
-      return 'crypto';
-    } else if (symbol.includes('/')) {
-      return 'forex';
-    } else {
-      return 'stocks';
+    } catch (error) {
+      this.logger.error('Error storing knowledge:', error);
+      return false;
     }
   }
   
@@ -407,284 +922,6 @@ class StrategyAgent extends BaseAgent {
       volatility: data.processed.volatility,
       mean: data.processed.mean
     };
-  }
-  
-  /**
-   * Execute a specific trading strategy
-   * @param {object} strategy - Strategy to execute
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  async executeStrategy(strategy, data) {
-    // This is a simplified implementation
-    // A real implementation would have more sophisticated logic
-    
-    switch (strategy.id) {
-      case 'trend-following':
-        return this.executeTrendFollowingStrategy(strategy, data);
-      
-      case 'mean-reversion':
-        return this.executeMeanReversionStrategy(strategy, data);
-      
-      case 'breakout':
-        return this.executeBreakoutStrategy(strategy, data);
-      
-      case 'momentum':
-        return this.executeMomentumStrategy(strategy, data);
-      
-      case 'volume-profile':
-        return this.executeVolumeProfileStrategy(strategy, data);
-      
-      default:
-        this.logger.warn(`Unknown strategy: ${strategy.id}`);
-        return null;
-    }
-  }
-  
-  /**
-   * Execute trend following strategy
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  executeTrendFollowingStrategy(strategy, data) {
-    // Simple implementation of trend following
-    const trend = data.processed.trend;
-    const currentPrice = this.marketState.price;
-    
-    if (trend === 'strong_up') {
-      return {
-        action: 'BUY',
-        reason: 'Strong uptrend detected',
-        confidence: 0.8,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 0.95,
-          takeProfit: currentPrice * 1.1
-        }
-      };
-    } else if (trend === 'strong_down') {
-      return {
-        action: 'SELL',
-        reason: 'Strong downtrend detected',
-        confidence: 0.8,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 1.05,
-          takeProfit: currentPrice * 0.9
-        }
-      };
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Execute mean reversion strategy
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  executeMeanReversionStrategy(strategy, data) {
-    // Simple implementation of mean reversion
-    const currentPrice = this.marketState.price;
-    const mean = data.processed.mean;
-    const deviation = (currentPrice - mean) / mean;
-    
-    if (deviation > strategy.parameters.deviationThreshold / 100) {
-      return {
-        action: 'SELL',
-        reason: 'Price significantly above mean',
-        confidence: 0.7,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 1.03,
-          takeProfit: mean
-        }
-      };
-    } else if (deviation < -strategy.parameters.deviationThreshold / 100) {
-      return {
-        action: 'BUY',
-        reason: 'Price significantly below mean',
-        confidence: 0.7,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 0.97,
-          takeProfit: mean
-        }
-      };
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Execute breakout strategy
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  executeBreakoutStrategy(strategy, data) {
-    // Simple implementation of breakout strategy
-    // In a real implementation, this would use more sophisticated breakout detection
-    
-    const prices = data.original.prices;
-    const currentPrice = prices[prices.length - 1];
-    
-    // Calculate a simple resistance level
-    const max = Math.max(...prices.slice(0, -3));
-    
-    // Calculate a simple support level
-    const min = Math.min(...prices.slice(0, -3));
-    
-    // Check for breakout
-    if (currentPrice > max * (1 + strategy.parameters.volatilityFactor / 100)) {
-      return {
-        action: 'BUY',
-        reason: 'Bullish breakout detected',
-        confidence: 0.75,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: max,
-          takeProfit: currentPrice * 1.1
-        }
-      };
-    } else if (currentPrice < min * (1 - strategy.parameters.volatilityFactor / 100)) {
-      return {
-        action: 'SELL',
-        reason: 'Bearish breakout detected',
-        confidence: 0.75,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: min,
-          takeProfit: currentPrice * 0.9
-        }
-      };
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Execute momentum strategy
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  executeMomentumStrategy(strategy, data) {
-    // Calculate a simple relative strength indicator (RSI)
-    const prices = data.original.prices;
-    const period = strategy.parameters.period;
-    const currentPrice = prices[prices.length - 1];
-    
-    // Need at least period+1 prices for calculation
-    if (prices.length <= period) {
-      return null;
-    }
-    
-    // Calculate gains and losses
-    let sumGain = 0;
-    let sumLoss = 0;
-    
-    for (let i = prices.length - period; i < prices.length; i++) {
-      const change = prices[i] - prices[i - 1];
-      if (change >= 0) {
-        sumGain += change;
-      } else {
-        sumLoss += Math.abs(change);
-      }
-    }
-    
-    // Calculate RS and RSI
-    const avgGain = sumGain / period;
-    const avgLoss = sumLoss / period;
-    
-    // Avoid division by zero
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
-    
-    // Signal based on RSI
-    if (rsi < strategy.parameters.oversoldLevel) {
-      return {
-        action: 'BUY',
-        reason: 'Oversold condition detected by RSI',
-        confidence: 0.7,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 0.95,
-          takeProfit: currentPrice * 1.1
-        }
-      };
-    } else if (rsi > strategy.parameters.overboughtLevel) {
-      return {
-        action: 'SELL',
-        reason: 'Overbought condition detected by RSI',
-        confidence: 0.7,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 1.05,
-          takeProfit: currentPrice * 0.9
-        }
-      };
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Execute volume profile strategy
-   * @param {object} strategy - Strategy configuration
-   * @param {object} data - Market data
-   * @returns {object|null} Trading signal
-   */
-  executeVolumeProfileStrategy(strategy, data) {
-    // In a real implementation, this would analyze volume distribution at different price levels
-    // For this simplified version, we'll use a placeholder implementation
-    
-    if (!data.original.volume) {
-      return null; // Can't execute without volume data
-    }
-    
-    const currentPrice = this.marketState.price;
-    const prices = data.original.prices;
-    const threshold = strategy.parameters.significantLevelThreshold;
-    
-    // Simplified approach: if current volume is significantly higher than average
-    // and price is approaching a recent high or low, consider it a key level
-    const avgVolume = data.original.volume; // In real impl, this would be an average
-    const recentHigh = Math.max(...prices.slice(-5));
-    const recentLow = Math.min(...prices.slice(-5));
-    
-    // If volume is high and price is at recent low, potential support level
-    if (data.original.volume > avgVolume * threshold && 
-        Math.abs(currentPrice - recentLow) / recentLow < 0.01) {
-      return {
-        action: 'BUY',
-        reason: 'Volume support level detected',
-        confidence: 0.65,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 0.97,
-          takeProfit: currentPrice * 1.1
-        }
-      };
-    } 
-    // If volume is high and price is at recent high, potential resistance level
-    else if (data.original.volume > avgVolume * threshold && 
-             Math.abs(currentPrice - recentHigh) / recentHigh < 0.01) {
-      return {
-        action: 'SELL',
-        reason: 'Volume resistance level detected',
-        confidence: 0.65,
-        params: {
-          entryPrice: currentPrice,
-          stopLoss: currentPrice * 1.03,
-          takeProfit: currentPrice * 0.9
-        }
-      };
-    }
-    
-    return null;
   }
   
   /**
@@ -1070,4 +1307,4 @@ class StrategyAgent extends BaseAgent {
   }
 }
 
-module.exports = new StrategyAgent(); 
+module.exports = new StrategyAgent();

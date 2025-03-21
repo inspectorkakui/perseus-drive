@@ -1,52 +1,53 @@
 {
   "name": "perseus-drive",
-  "version": "0.1.0",
-  "description": "AI Trading Algorithm System with Multi-Agent Architecture",
+  "version": "1.0.0",
+  "description": "Advanced trading system with multi-agent architecture",
   "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/username/perseus-drive.git"
-  },
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node test/simple-test.js",
-    "test:agents": "node test/agent-communication.test.js",
-    "test:logging": "node test/test-logging.js",
-    "debug": "node test/debug-suite.js",
-    "docs": "jsdoc -c jsdoc.json"
+    "test": "node test/run-all-tests.js",
+    "test:integration": "node test/strategy-execution-integration.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/perseus-drive.git"
   },
   "keywords": [
     "trading",
-    "algorithm",
-    "ai",
+    "finance",
+    "algorithmic-trading",
     "multi-agent",
-    "finance"
+    "crypto",
+    "stocks"
   ],
-  "author": "Perseus Drive Team",
-  "license": "UNLICENSED",
+  "author": "Perseus Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/perseus-drive/issues"
+  },
+  "homepage": "https://github.com/yourusername/perseus-drive#readme",
   "dependencies": {
-    "axios": "^0.27.2",
-    "chai": "^5.2.0",
-    "dotenv": "^16.0.3",
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "fast-json-patch": "^3.1.1",
-    "joi": "^17.13.3",
-    "json-diff": "^1.0.6",
-    "mocha": "^11.1.0",
+    "joi": "^17.9.2",
+    "lodash": "^4.17.21",
     "moment": "^2.29.4",
-    "nock": "^14.0.1",
-    "sinon": "^19.0.4",
-    "uuid": "^9.0.1",
-    "winston": "^3.11.0",
-    "ws": "^8.18.1"
+    "uuid": "^9.0.0",
+    "winston": "^3.10.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
-    "jest": "^29.5.0",
-    "jsdoc": "^4.0.2",
-    "nodemon": "^2.0.22"
+    "chai": "^4.3.7",
+    "eslint": "^8.46.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.0.1",
+    "sinon": "^15.2.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

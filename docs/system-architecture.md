@@ -2,7 +2,19 @@
 
 ## Overview
 
-Perseus Drive employs a recursive agent-based architecture for AI-driven trading and investment decision-making. The system consists of specialized agents that work together to analyze market data, develop strategies, evaluate risk, and generate trading signals. This document describes the current architecture and component relationships.
+Perseus Drive employs a recursive agent-based architecture for AI-driven trading and investment decision-making. The system consists of specialized agents that work together to analyze market data, develop strategies, evaluate risk, execute trades, and monitor performance. This document describes the current architecture and component relationships.
+
+## Recursive Architecture
+
+The system's recursive design is facilitated by the Prompt Engineering Agent, which generates and refines prompts for all other agents. This creates a feedback loop where:
+
+1. Each agent receives optimized prompts from the Prompt Engineering Agent
+2. Agents process their specific tasks (strategy development, risk assessment, execution)
+3. Results and performance metrics are stored in the Knowledge Base
+4. The Prompt Engineering Agent analyzes these outcomes to refine future prompts
+5. Updated prompts create more effective agent behaviors in subsequent operations
+
+This recursive pattern allows the system to continuously improve its decision-making capabilities based on past performance and changing market conditions.
 
 ## Agent Architecture
 
@@ -10,15 +22,16 @@ The system is built around specialized agents, each handling a specific aspect o
 
 ### Core Agents
 
-1. **Prompt Engineering Agent** ✅
+1. **Prompt Engineering Agent**
    - **Status**: Implemented and fully functional
    - **Function**: Manages and optimizes prompts for all other agents
    - **Features**:
      - Template management
      - Prompt versioning
      - Context optimization
+     - Recursive prompt refinement
 
-2. **Strategy Agent** ✅
+2. **Strategy Agent**
    - **Status**: Implemented and fully functional
    - **Function**: Develops and executes trading strategies
    - **Features**:
@@ -27,7 +40,7 @@ The system is built around specialized agents, each handling a specific aspect o
      - Performance tracking
      - Strategy registration framework
 
-3. **Risk Management Agent** ✅
+3. **Risk Management Agent**
    - **Status**: Implemented and fully functional
    - **Function**: Evaluates risk and manages position sizing
    - **Features**:
@@ -36,7 +49,7 @@ The system is built around specialized agents, each handling a specific aspect o
      - Trade evaluation
      - Portfolio risk monitoring
 
-4. **Data Processing Agent** ✅
+4. **Data Processing Agent**
    - **Status**: Implemented and fully functional
    - **Function**: Processes and normalizes market data
    - **Features**:
@@ -44,11 +57,20 @@ The system is built around specialized agents, each handling a specific aspect o
      - Feature engineering
      - Technical indicator calculation
 
+5. **Execution Agent**
+   - **Status**: Implemented and fully functional
+   - **Function**: Optimizes order execution and handles trade execution
+   - **Features**:
+     - Order routing
+     - Execution optimization
+     - Transaction cost analysis
+     - Market impact minimization
+
 ## External Data Provider System
 
 The External Data Provider system consists of:
 
-1. **Provider Manager** ✅
+1. **Provider Manager**
    - **Status**: Implemented and fully functional
    - **Function**: Manages multiple data providers
    - **Features**:
@@ -56,7 +78,7 @@ The External Data Provider system consists of:
      - Failover handling
      - Data normalization
 
-2. **Coinbase Provider** ✅
+2. **Coinbase Provider**
    - **Status**: Implemented and fully functional
    - **Function**: Connects to Coinbase exchange API
    - **Features**:
@@ -64,7 +86,7 @@ The External Data Provider system consists of:
      - Historical data retrieval
      - Symbol mapping
 
-3. **Binance Provider** 🔄
+3. **Binance Provider**
    - **Status**: Implementation in progress
    - **Function**: Connects to Binance exchange API
    - **Features**:
@@ -74,7 +96,7 @@ The External Data Provider system consists of:
 
 ## Core Components
 
-1. **Knowledge Base** ✅
+1. **Knowledge Base**
    - **Status**: Implemented and fully functional
    - **Function**: Centralized data storage for agents
    - **Features**:
@@ -82,7 +104,7 @@ The External Data Provider system consists of:
      - Query capabilities
      - Data versioning
 
-2. **Agent Messenger** ✅
+2. **Agent Messenger**
    - **Status**: Implemented and fully functional
    - **Function**: Facilitates communication between agents
    - **Features**:
@@ -90,7 +112,7 @@ The External Data Provider system consists of:
      - Message queuing
      - Agent registration
 
-3. **Performance Monitor** ✅
+3. **Performance Monitor**
    - **Status**: Implemented and functional
    - **Function**: Tracks strategy performance
    - **Features**:
@@ -118,28 +140,34 @@ All agent communication follows a standardized message format:
 ```mermaid
 flowchart TD
     subgraph "Perseus Drive System"
-        PE[Prompt Engineering Agent] --> |Manages prompts| SA[Strategy Agent]
-        PE --> |Manages prompts| RM[Risk Management Agent]
-        PE --> |Manages prompts| DP[Data Processing Agent]
+        PE[Prompt Engineering Agent] --> |Optimizes prompts| SA[Strategy Agent]
+        PE --> |Optimizes prompts| RM[Risk Management Agent]
+        PE --> |Optimizes prompts| DP[Data Processing Agent]
+        PE --> |Optimizes prompts| EA[Execution Agent]
         
         KB[Knowledge Base] <--> PE
         KB <--> SA
         KB <--> RM
         KB <--> DP
+        KB <--> EA
         
         AM[Agent Messenger] --- PE
         AM --- SA
         AM --- RM
         AM --- DP
+        AM --- EA
         
         PM[Performance Monitor] --> PE
         PM --> SA
         PM --> RM
         PM --> DP
+        PM --> EA
         
         DP --> |Market data| SA
         SA --> |Strategy signals| RM
-        RM --> |Risk limits| SA
+        RM --> |Approved signals| EA
+        EA --> |Execution results| PM
+        PM --> |Performance metrics| PE
         
         MDI[Market Data Interface] --> DP
         
@@ -155,27 +183,49 @@ flowchart TD
     subgraph "External Systems"
         MD[Market Data] --> BP1
         MD --> BP2
+        
+        EX[Exchanges] <--> EA
     end
     
     classDef implemented fill:#d5f9e5,stroke:#333,stroke-width:2px;
     classDef inProgress fill:#f9f9d5,stroke:#333,stroke-width:2px;
     classDef planned fill:#f9d5e5,stroke:#333,stroke-width:2px;
     
-    class PE,SA,DP,KB,AM,PM,MDI,PM1,BP1 implemented;
-    class RM implemented;
+    class PE,SA,DP,KB,AM,PM,MDI,PM1,BP1,RM,EA implemented;
     class BP2 inProgress;
     class BP3 planned;
 ```
 
+## Recursive Prompt Reinjection Loop
+
+```mermaid
+flowchart LR
+    PE[Prompt Engineering Agent] --> |Generates Prompts| Agents[Trading Agents]
+    Agents --> |Execution Results| KB[Knowledge Base]
+    KB --> |Performance Data| PE
+    PE --> |Refined Prompts| Agents
+```
+
 ## Current Status
 
-The Perseus Drive system has completed implementation of all core agents (Prompt Engineering, Strategy, Risk Management, and Data Processing) with full Knowledge Base and Agent Messenger components. The system can process market data, generate trading signals, evaluate risk, and track performance metrics.
+The Perseus Drive system has completed implementation of all core agents (Prompt Engineering, Strategy, Risk Management, Data Processing, and Execution) with full Knowledge Base and Agent Messenger components. The system can process market data, generate trading signals, evaluate risk, execute trades, and track performance metrics.
 
 The External Data Provider system has been implemented with a fully functional Provider Manager and Coinbase Provider. The Binance Provider implementation is in progress.
 
+## Development Roadmap
+
 Future components planned for Phase 3 include:
-- Trade Execution Agent
 - Portfolio Management
 - Backtesting Framework
 - System Dashboard
-- Machine Learning Integration 
+- Machine Learning Integration
+
+## Integration Points
+
+| Component | Integrates With | Communication Method |
+|-----------|-----------------|----------------------|
+| Strategy Agent | Data Processing Agent, Risk Management Agent | Message Passing |
+| Risk Management Agent | Strategy Agent, Execution Agent | Message Passing |
+| Execution Agent | Risk Management Agent, External Exchanges | Message Passing, API Calls |
+| Prompt Engineering Agent | All Agents | Knowledge Base, Message Passing |
+| Provider Manager | External Data Sources, Data Processing Agent | API Calls, WebSockets | 

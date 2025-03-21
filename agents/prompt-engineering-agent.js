@@ -241,18 +241,84 @@ Approve, modify, or reject the trade based on risk assessment.`,
     };
   }
   
+  /**
+   * Get a prompt for the Execution Agent
+   * @returns {Object} The prompt for execution operations
+   */
   getExecutionPrompt() {
-    return {
-      system: `You are the Execution Agent for Perseus Drive.
-Your role is to efficiently execute approved trading decisions.
-Focus on optimal order types, timing, and minimizing market impact.`,
-      user: `Execute the approved trade in the most efficient manner.
-Determine the optimal order type and parameters.
-Manage execution to minimize slippage and market impact.
-Report execution details and any relevant market feedback.`,
-      version: '1.0.0',
-      created: new Date()
-    };
+    try {
+      this.logger.info('Getting execution prompt');
+      
+      // Return a structured prompt for execution operations
+      return {
+        system: `You are the Execution Agent for Perseus Drive.
+          Your role is to optimize trade execution by minimizing slippage,
+          market impact, and transaction costs while ensuring timely execution.
+          
+          For each trade signal, you should determine:
+          1. The optimal execution strategy (market, limit, or advanced)
+          2. The appropriate order sizing based on liquidity
+          3. The expected slippage and how to minimize it
+          4. The transaction costs
+          
+          Always monitor market conditions and adapt your execution approach
+          based on current liquidity and volatility.`,
+        examples: [
+          {
+            signal: {
+              action: 'BUY',
+              symbol: 'BTC-USD',
+              confidence: 0.8,
+              params: {
+                entryPrice: 50000,
+                positionSize: 5000,
+                stopLoss: 49000,
+                takeProfit: 55000
+              }
+            },
+            execution: {
+              strategy: 'market',
+              orderType: 'market',
+              slippageExpectation: '0.1%',
+              transactionCost: '0.2%',
+              timing: 'immediate'
+            }
+          },
+          {
+            signal: {
+              action: 'SELL',
+              symbol: 'ETH-USD',
+              confidence: 0.7,
+              params: {
+                entryPrice: 3000,
+                positionSize: 3000,
+                stopLoss: 3150,
+                takeProfit: 2700
+              }
+            },
+            execution: {
+              strategy: 'limit',
+              orderType: 'limit',
+              limitPrice: 3020,
+              slippageExpectation: '0%',
+              transactionCost: '0.1%',
+              timing: 'next 1 hour'
+            }
+          }
+        ],
+        version: '1.0.0',
+        created: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error('Error getting execution prompt:', error);
+      // Return a default prompt
+      return {
+        system: 'You are the Execution Agent for Perseus Drive. Execute trades efficiently.',
+        examples: [],
+        version: '1.0.0',
+        created: new Date().toISOString()
+      };
+    }
   }
   
   getSystemPrompt() {
