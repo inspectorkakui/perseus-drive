@@ -6,11 +6,15 @@ package-lock.json
 .env
 .env.local
 .env.*
+!.env.example
 
 # Build outputs
 dist/
 build/
+
+# Log files
 *.log
+logs/
 
 # IDE and editor files
 .vscode/
@@ -35,6 +39,14 @@ temp/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Project-specific log files
+agent-messenger.log
+data-processing-agent.log
+prompt-engineering-agent.log
+perseus-drive.log
+agent-communication.log
+knowledge-base.log
 
 # Local development
 *.local 

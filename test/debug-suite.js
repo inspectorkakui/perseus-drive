@@ -12,6 +12,7 @@ const agentMessenger = require('../tools/agent-messenger');
 const { createComponentLogger } = require('../tools/logger');
 const fs = require('fs').promises;
 const path = require('path');
+const strategyAgent = require('../agents/strategy-agent');
 
 // Create debug-specific logger
 const logger = createComponentLogger('DEBUG-SUITE');
@@ -78,20 +79,46 @@ function validateObject(obj, requiredFields) {
 }
 
 // Wait for message with timeout
-function waitForMessage(agentId, messageType, timeout = 5000) {
+function waitForMessage(agentId, messageType = null, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`Timeout waiting for ${messageType} message to ${agentId}`));
+      agentMessenger.removeListener('message:received', messageHandler);
+      reject(new Error(`Timeout waiting for ${messageType ? messageType + ' ' : ''}message to ${agentId}`));
     }, timeout);
     
+    logger.debug(`Waiting for ${messageType || 'any'} message for agent ${agentId}`);
+    
+    // Check if the message is already in the queue before waiting
+    const existingMessages = agentMessenger.getMessages(agentId, false);
+    logger.debug(`Found ${existingMessages.length} existing messages for agent ${agentId}`);
+    
+    if (existingMessages.length > 0) {
+      logger.debug(`Message types in queue: ${existingMessages.map(m => m.type).join(', ')}`);
+    }
+    
+    const matchingMessage = existingMessages.find(msg => 
+      (!messageType || msg.type === messageType)
+    );
+    
+    if (matchingMessage) {
+      logger.debug(`Found matching existing message of type ${matchingMessage.type}`);
+      clearTimeout(timer);
+      resolve(matchingMessage);
+      return;
+    }
+    
+    // If no existing message, set up the listener
     const messageHandler = (message) => {
-      if (message.to === agentId && message.type === messageType) {
+      logger.debug(`Received message: to=${message.to}, from=${message.from}, type=${message.type}`);
+      if (message.to === agentId && (!messageType || message.type === messageType)) {
+        logger.debug(`Message matched criteria for ${agentId}, type=${message.type}`);
         clearTimeout(timer);
         agentMessenger.removeListener('message:received', messageHandler);
         resolve(message);
       }
     };
     
+    // Add the listener
     agentMessenger.on('message:received', messageHandler);
   });
 }
@@ -108,7 +135,8 @@ async function runDebugSuite() {
     promptEngineeringAgent: { success: false, details: {} },
     dataProcessingAgent: { success: false, details: {} },
     interAgentCommunication: { success: false, details: {} },
-    systemIntegration: { success: false, details: {} }
+    systemIntegration: { success: false, details: {} },
+    strategyAgent: { success: false, details: {} }
   };
   
   try {
@@ -557,6 +585,214 @@ async function runDebugSuite() {
     testResults.systemIntegration.success = 
       testResults.systemIntegration.details.endToEndWorkflow &&
       testResults.systemIntegration.details.errorHandling;
+    
+    // ========== Test 6: Strategy Agent ==========
+    logger.info('\nTest 6: Strategy Agent');
+    logger.info('--------------------------------');
+    
+    // First, properly initialize the Strategy Agent if it hasn't been initialized yet
+    if (!strategyAgent.isInitialized) {
+      logger.info('6.1: Initializing Strategy Agent first...');
+      await strategyAgent.initialize();
+      logger.info('6.1: Strategy Agent initialized');
+      
+      // Register default strategies
+      strategyAgent.registerStrategy('mean-reversion', 'Mean Reversion', (data) => {
+        const prices = data.prices;
+        const lastPrice = prices[prices.length - 1];
+        const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+        
+        if (lastPrice > mean * 1.05) {
+          return {
+            action: 'SELL',
+            reason: 'Price significantly above mean',
+            confidence: 0.7,
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 1.03,
+              takeProfit: mean
+            }
+          };
+        } else if (lastPrice < mean * 0.95) {
+          return {
+            action: 'BUY',
+            reason: 'Price significantly below mean',
+            confidence: 0.7,
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: lastPrice * 0.97,
+              takeProfit: mean
+            }
+          };
+        }
+        return null;
+      });
+      
+      strategyAgent.registerStrategy('trend-following', 'Trend Following', (data) => {
+        const prices = data.prices;
+        const lastPrice = prices[prices.length - 1];
+        const prevPrice = prices[prices.length - 2] || lastPrice;
+        
+        // Simple trend detection
+        if (lastPrice > prevPrice * 1.02) {
+          return {
+            action: 'BUY',
+            reason: 'Upward trend detected',
+            confidence: 0.6,
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: prevPrice,
+              takeProfit: lastPrice * 1.05
+            }
+          };
+        } else if (lastPrice < prevPrice * 0.98) {
+          return {
+            action: 'SELL',
+            reason: 'Downward trend detected',
+            confidence: 0.6,
+            params: {
+              entryPrice: lastPrice,
+              stopLoss: prevPrice,
+              takeProfit: lastPrice * 0.95
+            }
+          };
+        }
+        return null;
+      });
+    }
+    
+    // 6.1: Test signal generation
+    logger.info('6.1: Testing signal generation...');
+    let signalGenerationSuccess = false;
+    try {
+      // Create mock market data for BTC with a clear uptrend
+      const mockData = {
+        symbol: 'BTC-USD',
+        prices: [100, 102, 104, 106, 108, 110],
+        timestamp: new Date().toISOString(),
+        volume: [1000, 1020, 980, 1050, 1100, 1150]
+      };
+      
+      // Process the data
+      await dataProcessingAgent.process(mockData);
+      
+      // Generate signals
+      const signals = await strategyAgent.process(mockData);
+      
+      // Check if any signals were generated
+      if (signals && signals.length > 0) {
+        logger.info(`✓ Generated ${signals.length} signals. First signal: ${JSON.stringify(signals[0], null, 2)}`);
+        signalGenerationSuccess = true;
+        logger.info('✓ Signal generation test passed');
+      } else {
+        logger.error('✗ Signal generation test failed: No signals generated for uptrend data');
+      }
+    } catch (error) {
+      logger.error('✗ Signal generation test failed:', { error: error.message });
+    }
+    testResults.strategyAgent.details.signalGeneration = signalGenerationSuccess;
+    
+    // 6.2: Test strategy performance tracking
+    logger.info('6.2: Testing strategy performance tracking...');
+    let performanceTrackingSuccess = false;
+    try {
+      // Record a test trade outcome
+      strategyAgent.recordTradeOutcome(
+        'trend-following',
+        {
+          action: 'BUY',
+          entryPrice: 100,
+          exitPrice: 110,
+          timestamp: new Date().toISOString(),
+          symbol: 'BTC-USD'
+        },
+        true,
+        10
+      );
+      
+      // Get performance report
+      const report = strategyAgent.getPerformanceReport();
+      
+      if (report && report.trades && report.trades.length > 0) {
+        logger.info(`✓ Performance report generated: ${report.trades.length} trades recorded`);
+        performanceTrackingSuccess = true;
+        logger.info('✓ Strategy performance tracking test passed');
+      } else {
+        logger.error('✗ Strategy performance tracking test failed: No performance data');
+      }
+    } catch (error) {
+      logger.error(`✗ Strategy performance tracking test failed: ${error.message}`);
+    }
+    testResults.strategyAgent.details.performanceTracking = performanceTrackingSuccess;
+    
+    // 6.3: Test strategy messaging
+    logger.info('6.3: Testing strategy messaging...');
+    let messagingSuccess = false;
+    try {
+      // Register a test agent
+      const testAgentId = 'strategy-test-agent';
+      agentMessenger.registerAgent(testAgentId, 'test');
+      
+      // Create mock market data for ETH with a clear downtrend
+      const mockData = {
+        symbol: 'ETH-USD',
+        prices: [200, 190, 180, 170, 160, 150],
+        timestamp: new Date().toISOString(),
+        volume: [2000, 1950, 1900, 1850, 1800, 1750]
+      };
+      
+      // Process the data
+      await dataProcessingAgent.process(mockData);
+      
+      logger.debug('Sending market data to Strategy Agent...');
+      
+      // Send the data to the strategy agent (using our own message)
+      const messageId = await agentMessenger.sendMessage(testAgentId, 'strategy', 
+        mockData, 'market_data'
+      );
+      
+      logger.debug(`Sent market data message: ${messageId}, waiting for signal_response...`);
+      
+      // Wait for a response (using the improved waitForMessage utility)
+      try {
+        const response = await waitForMessage(testAgentId, 'signal_response', 5000);
+        
+        if (response && response.type === 'signal_response') {
+          logger.info(`✓ Received signal response: ${JSON.stringify(response.signals || (response.content && response.content.signals) || 'No signals')}`);
+          messagingSuccess = true;
+          logger.info('✓ Strategy messaging test passed');
+        } else {
+          logger.error('✗ Strategy messaging test failed: No proper response received');
+          logger.error(`Response received: ${JSON.stringify(response)}`);
+        }
+      } catch (error) {
+        logger.error(`✗ Strategy messaging test failed: ${error.message}`);
+        
+        // Check for any messages received
+        const messages = agentMessenger.getMessages(testAgentId, false);
+        if (messages.length > 0) {
+          logger.debug(`Found ${messages.length} messages in queue for ${testAgentId}`);
+          messages.forEach((msg, i) => {
+            logger.debug(`Message ${i+1}: type=${msg.type}, from=${msg.from}`);
+          });
+        } else {
+          logger.debug(`No messages in queue for ${testAgentId}`);
+        }
+      }
+    } catch (error) {
+      logger.error(`✗ Strategy messaging test failed: ${error.message}`);
+    }
+    testResults.strategyAgent.details.messaging = messagingSuccess;
+    
+    // Cleanup
+    agentMessenger.unregisterAgent('strategy-test-agent');
+    
+    // Set overall success
+    testResults.strategyAgent = testResults.strategyAgent || { details: {} };
+    testResults.strategyAgent.success = 
+      testResults.strategyAgent.details.signalGeneration && 
+      testResults.strategyAgent.details.performanceTracking &&
+      testResults.strategyAgent.details.messaging;
     
     // Log test results
     for (const [component, result] of Object.entries(testResults)) {

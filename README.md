@@ -1,34 +1,76 @@
 # Perseus Drive
 
-Private AI-driven investment analysis and decision-making system.
+<!-- 
+Artwork to be added here
+The artwork should represent an AI-driven trading system with a sleek, modern design
+-->
 
-## Overview
-Personal project for automated investment analysis and decision support using advanced AI techniques.
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)](package.json)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](test/debug-suite.js)
 
-## Status
-🚧 Under active development - Private repository
+## Project Overview
+Perseus Drive is a private AI-driven investment analysis and decision-making system that employs a recursive agent design for market analysis, strategy development, and trading signal generation.
 
-## Note
-This is a private, proprietary project. Not intended for public use or contributions.
+## Current Status
+The system has reached a significant milestone with the successful validation of the core agent ecosystem. All essential components are now fully functional:
+
+- ✅ Core agent infrastructure fully implemented
+- ✅ Strategy Agent functioning with signal generation and performance tracking
+- ✅ Data Processing Agent operational for market data analysis
+- ✅ Prompt Engineering Agent managing prompt optimization
+- ✅ Knowledge Base providing persistent storage
+- ✅ Agent Messenger handling inter-agent communication
 
 ## Project Structure
-- `/agents` - Specialized AI agents for different trading functions
-- `/core` - Core system architecture and common utilities
-- `/docs` - Documentation and system design
-- `/tools` - Custom MCP (Multi-Agent Communication Protocol) tools
-- `/test` - Test scripts and validation tools
+```
+perseus-drive/
+├── agents/                 # Agent implementations
+│   ├── prompt-engineering-agent.js
+│   ├── strategy-agent.js
+│   ├── data-processing-agent.js
+│   └── base-agent.js
+├── core/                   # Core system architecture
+│   ├── index.js
+│   └── config.js
+├── tools/                  # MCP tools for agent communication
+│   ├── agent-messenger.js
+│   ├── knowledge-base.js
+│   └── logger.js
+├── test/                   # Test suites 
+│   ├── debug-suite.js
+│   ├── strategy-agent.test.js
+│   └── agent-messenger.test.js
+└── docs/                   # Documentation
+    ├── ARCHITECTURE.md
+    ├── ROADMAP.md
+    └── system_diagram.md
+```
 
-## Current Features
-- **Multi-Agent Communication Framework**: Event-driven messaging system for agent coordination
-- **Knowledge Base**: Versioned repository for shared agent knowledge
-- **Prompt Engineering Agent**: Central agent that manages prompts for all other agents
-- **Data Processing Agent**: Collects and processes market data for strategy development
-- **Base Agent Class**: Foundation for all specialized agent implementations
+## Features
+- **Multi-Agent Architecture**: Specialized agents work together to perform complex trading functions
+- **Knowledge Sharing**: Centralized knowledge base for persistent data storage
+- **Trading Strategies**: Multiple implemented strategies (Mean Reversion, Breakout)
+- **Performance Tracking**: Comprehensive metrics including win rate, profit factor, and drawdown
+- **Signal Generation**: Automated trading signal generation from market data
+- **Messaging System**: Robust inter-agent communication protocol
 
-## Setup Instructions
-1. Clone this repository
+## Recent Updates
+- Fixed Strategy Agent signal generation for uptrend and downtrend data
+- Implemented comprehensive performance tracking with key metrics
+- Resolved messaging timeout issues between agents
+- Successfully validated the full system integration with all tests passing
+
+## Setup
+
+### Prerequisites
+- Node.js (v16+)
+- MongoDB (for persistent storage)
+
+### Installation
+1. Clone the repository
 ```bash
-git clone [repository-url] perseus-drive
+git clone [repository-url]
 cd perseus-drive
 ```
 
@@ -40,54 +82,47 @@ npm install
 3. Configure environment
 ```bash
 cp .env.example .env
-# Edit .env with your API keys and configuration
+# Edit .env with required configuration
 ```
 
-4. Run tests
+### Running Tests
 ```bash
-node test/simple-test.js
-```
-
-5. Start the system
-```bash
-npm run dev
+node test/debug-suite.js
 ```
 
 ## Development Roadmap
 
-### Phase 1: Recursive AI Agent System (Current)
-- ✅ Design core architecture
-- ✅ Implement Prompt Engineering Agent
-- ✅ Build Agent Messenger tool
-- ✅ Create Knowledge Base
-- ✅ Implement Base Agent class
-- ✅ Develop Data Processing Agent
-- ⬜ Implement Strategy Agent
-- ⬜ Implement Risk Management Agent
-- ⬜ Implement Execution Agent
+### Completed
+- Core agent system architecture 
+- Inter-agent communication protocol
+- Knowledge base implementation
+- Strategy Agent with signal generation
+- Data Processing Agent with market data handling
+- Prompt Engineering Agent with template management
+- System integration and validation
 
-### Phase 2: Trading Strategy Implementation
-- ⬜ Market data integration
-- ⬜ Technical analysis framework
-- ⬜ Strategy development and backtesting
-- ⬜ Signal generation
+### In Progress
+- External data provider integration
+- Advanced multi-timeframe strategies
+- Strategy optimization framework
 
-### Phase 3: Backtesting and Optimization
-- ⬜ Comprehensive backtesting engine
-- ⬜ Performance evaluation metrics
-- ⬜ Strategy optimization
-
-### Phase 4: Deployment and Monitoring
-- ⬜ Production deployment
-- ⬜ Performance tracking
-- ⬜ Continuous improvement
+### Upcoming
+- Risk Management Agent implementation
+- Execution Agent development
+- Portfolio management capabilities
+- Backtesting visualization tools
 
 ## Documentation
 See the `/docs` directory for detailed documentation:
-- `ARCHITECTURE.md` - System design and component relationships
-- `ROADMAP.md` - Development milestones and timelines
-- `QUICK_START.md` - Setup and development guide
-- `system_diagram.md` - Visual representation of system architecture
+- `ARCHITECTURE.md`: Technical architecture design
+- `ROADMAP.md`: Development roadmap and milestones
+- `system_diagram.md`: System component diagrams and data flow
+
+## Contributing
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## License
-Proprietary and confidential 
+This project is proprietary software. See the [LICENSE](LICENSE) file for details.
+
+## Proprietary Notice
+This project is proprietary and not intended for public use or distribution. All rights reserved. 

@@ -1,102 +1,155 @@
 # Perseus Drive Quick Start Guide
 
-This guide will help you get started with developing and running the Perseus Drive AI Trading Algorithm system.
+This guide provides a rapid onboarding for developers to get started with the Perseus Drive codebase.
 
-## Prerequisites
+## Environment Setup
 
-- Node.js (v18 or higher)
-- npm (v9 or higher)
-- MongoDB (optional, for data storage)
+### Prerequisites
+- Node.js (v16.0.0 or higher)
+- npm (v7.0.0 or higher)
+- Git
+- MongoDB (for persistent storage, optional for development)
 
-## Installation
+### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone [repository-url] perseus-drive
-   cd perseus-drive
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create environment configuration:
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Edit the `.env` file with your specific configuration values:
-   - Add your OpenAI API key
-   - Configure database connection (if using MongoDB)
-   - Set security keys
-
-## Running the System
-
-Start the development server:
+1. **Clone the repository**
 ```bash
-npm run dev
+git clone https://github.com/yourusername/perseus-drive.git
+cd perseus-drive
 ```
 
-The system will initialize and start running on http://localhost:3000 (or the port specified in your .env file).
-
-## Development Workflow
-
-### Adding a New Agent
-
-1. Create a new agent file in the `agents/` directory:
-   ```bash
-   touch agents/your-agent-name.js
-   ```
-
-2. Implement the agent following the existing agent patterns.
-
-3. Register the agent in `core/index.js`.
-
-### Extending MCP Tools
-
-1. Create a new tool file in the `tools/` directory:
-   ```bash
-   touch tools/your-tool-name.js
-   ```
-
-2. Implement the tool functionality.
-
-3. Import and use the tool in relevant agents or system components.
-
-## Testing
-
-Run tests with:
+2. **Install dependencies**
 ```bash
-npm test
+npm install
 ```
 
-## API Endpoints
+3. **Configure environment variables**
+```bash
+cp .env.example .env
+```
 
-- `GET /api/status` - Check system status and active agents
+Edit the `.env` file with your specific configuration:
+- Add your API keys if needed
+- Configure database settings if using MongoDB
+- Adjust any other environment-specific settings
 
 ## Project Structure
 
-- `/agents` - AI agents for different trading functions
-- `/core` - Core system architecture and utilities
-- `/docs` - Documentation
-- `/tools` - Custom MCP tools for agent communication
+### Key Directories
+- `/agents` - Contains all agent implementations
+- `/core` - Core system architecture 
+- `/tools` - MCP (Multi-Channel Protocol) tools for agent communication
+- `/test` - Test suites and testing utilities
+- `/docs` - Documentation files
 
-## Next Steps
+### Key Files
+- `index.js` - Main entry point for the application
+- `.env` - Environment configuration (not in version control)
+- `package.json` - Project metadata and dependencies
+- `test/debug-suite.js` - Main test suite for system validation
 
-1. Review the `ARCHITECTURE.md` document to understand the system design
-2. Check the `ROADMAP.md` file for development milestones
-3. Implement the Knowledge Base tool in `/tools`
-4. Create the base Agent class in `/core`
+## Running the System
+
+### Development Mode
+```bash
+npm run dev
+```
+This runs the application with hot reloading using nodemon.
+
+### Production Mode
+```bash
+npm start
+```
+
+### Running Tests
+```bash
+node test/debug-suite.js
+```
+This runs the comprehensive debug suite that validates all components.
+
+## Agent Overview
+
+The system consists of several specialized agents:
+
+### Strategy Agent
+- Located in `agents/strategy-agent.js`
+- Responsible for generating trading signals
+- Implements various trading strategies
+- Tracks performance metrics
+
+### Data Processing Agent
+- Located in `agents/data-processing-agent.js`
+- Handles market data analysis
+- Calculates technical indicators
+- Processes data for the Strategy Agent
+
+### Prompt Engineering Agent
+- Located in `agents/prompt-engineering-agent.js`
+- Manages prompts for all agents
+- Optimizes prompts for specific tasks
+- Provides templating functionality
+
+## Core Tools
+
+### Knowledge Base
+- Located in `tools/knowledge-base.js`
+- Provides persistent storage for all agents
+- Supports versioning and categorization
+
+### Agent Messenger
+- Located in `tools/agent-messenger.js`
+- Facilitates inter-agent communication
+- Handles message queues and routing
+
+## Development Workflow
+
+1. **Fork the repository** (if not a core contributor)
+2. **Create a new branch** for your feature or fix
+3. **Implement changes** following the code style of the project
+4. **Run tests** to ensure everything works
+5. **Submit a pull request** with a clear description of changes
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for more detailed contribution guidelines.
+
+## Common Tasks
+
+### Adding a New Strategy
+1. Add your strategy to the `strategies` object in `agents/strategy-agent.js`
+2. Implement the strategy logic in the `executeStrategy` method
+3. Update the performance tracking for your strategy
+4. Add tests for the new strategy in `test/strategy-agent.test.js`
+
+### Adding a New Agent
+1. Create a new file in the `agents` directory
+2. Extend the `BaseAgent` class from `core/base-agent.js`
+3. Implement required methods (initialize, handleMessage)
+4. Register the agent in the main initialization flow
+5. Add tests for the new agent
 
 ## Troubleshooting
 
-If you encounter any issues:
+### Common Issues
 
-1. Check the logs in `perseus-drive.log` and `agent-communication.log`
-2. Ensure your OpenAI API key is valid
-3. Verify all dependencies are installed correctly
+1. **Agent messaging timeout**
+   - Check that all agents are properly registered
+   - Ensure the message format is correct
+   - Verify that the receiving agent is handling the message type
 
-## Contributing
+2. **Knowledge Base errors**
+   - Check that categories follow the correct format
+   - Ensure you're using the correct version parameter
+   - Verify that the data structure is valid JSON
 
-See `CONTRIBUTING.md` for guidelines on contributing to the project. 
+3. **Strategy generation failure**
+   - Check the market data format
+   - Ensure the strategy implementation is correct
+   - Verify that performance tracking is properly initialized
+
+## Getting Help
+
+If you need assistance, please:
+
+1. Check the existing documentation
+2. Review open and closed issues on GitHub
+3. Create a new issue if needed
+4. Contact the core development team 

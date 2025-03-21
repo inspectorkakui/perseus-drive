@@ -10,16 +10,29 @@ const dataProcessingAgent = require('../agents/data-processing-agent');
 const agentMessenger = require('../tools/agent-messenger');
 const knowledgeBase = require('../tools/knowledge-base');
 
-// Wait for agent message with a better event handling approach
-function waitForMessage(agentId, timeout = 5000) {
+// Enhanced waitForMessage utility to handle race conditions
+function waitForMessage(agentId, messageType = null, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`Timeout waiting for message to ${agentId}`));
+      agentMessenger.removeListener('message:received', messageHandler);
+      reject(new Error(`Timeout waiting for ${messageType ? messageType + ' ' : ''}message to ${agentId}`));
     }, timeout);
     
-    // One-time event listener that auto-removes itself after being triggered
+    // Check if the message is already in the queue before waiting
+    const existingMessages = agentMessenger.getMessages(agentId, false);
+    const matchingMessage = existingMessages.find(msg => 
+      (!messageType || msg.type === messageType)
+    );
+    
+    if (matchingMessage) {
+      clearTimeout(timer);
+      resolve(matchingMessage);
+      return;
+    }
+    
+    // If no existing message, set up the listener
     const messageHandler = (message) => {
-      if (message.to === agentId) {
+      if (message.to === agentId && (!messageType || message.type === messageType)) {
         clearTimeout(timer);
         // Remove the listener to avoid memory leaks
         agentMessenger.removeListener('message:received', messageHandler);
@@ -65,8 +78,8 @@ async function testAgentCommunication() {
     console.log(`Sent message: ${messageId}`);
     
     console.log('\n2. Waiting for response...');
-    // Wait for response
-    const response = await waitForMessage('prompt-engineering');
+    // Wait for response with specific type
+    const response = await waitForMessage('prompt-engineering', 'data_response');
     console.log('Received response:', JSON.stringify(response.content, null, 2));
     
     console.log('\n3. Testing knowledge base...');
