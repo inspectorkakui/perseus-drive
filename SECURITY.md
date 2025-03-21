@@ -2,7 +2,6 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are currently being supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -12,7 +11,7 @@ Use this section to tell people about which versions of your project are current
 
 The Perseus Drive team takes security issues seriously. We appreciate your efforts to responsibly disclose your findings.
 
-To report a security vulnerability, please email the maintainers directly at security@example.com instead of opening a public issue.
+To report a security vulnerability, please email the maintainers directly at securityperseus@proton.me instead of opening a public issue.
 
 Please include the following information:
 - Type of issue
